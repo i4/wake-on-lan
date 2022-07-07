@@ -6,21 +6,22 @@ import logging
 import psutil
 import socket
 import sys
+import os
 import re
 
 def getHosts(dhcp_conf):
 	# https://github.com/cbalfour/dhcp_config_parser/blob/master/grammar/host.py
 	LBRACE, RBRACE, SEMI = map(Suppress, '{};')
-	PERIOD = Literal(".")
-	ip = Combine(Word(nums) + PERIOD + Word(nums) + PERIOD + Word(nums) + PERIOD + Word(nums))("ip_address")
-	macAddress = Word("abcdefABCDEF0123456789:")
-	hostname = Combine(Word(alphanums + "-") + ZeroOrMore(PERIOD + Word(alphanums + "-")))
-	comment = (Literal("#") + restOfLine)
-	ethernet = (Literal("hardware") + Literal("ethernet") + macAddress("mac") + SEMI)
-	address = (Literal("fixed-address") + hostname("address") + SEMI)
+	PERIOD = Literal('.')
+	ip = Combine(Word(nums) + PERIOD + Word(nums) + PERIOD + Word(nums) + PERIOD + Word(nums))('ip_address')
+	macAddress = Word('abcdefABCDEF0123456789:')
+	hostname = Combine(Word(alphanums + '-') + ZeroOrMore(PERIOD + Word(alphanums + '-')))
+	comment = (Literal('#') + restOfLine)
+	ethernet = (Literal('hardware') + Literal('ethernet') + macAddress('mac') + SEMI)
+	address = (Literal('fixed-address') + hostname('address') + SEMI)
 	host_stanza = (
-		Literal("host") + hostname("host") + LBRACE + (
-			ethernet & 
+		Literal('host') + hostname('host') + LBRACE + (
+			ethernet &
 			address
 			# TODO: Optional other fields
 		) + RBRACE
@@ -33,6 +34,8 @@ def getHosts(dhcp_conf):
 			'address': result['address'],
 			'mac': result['mac']
 		}
+
+	logging.debug('Parsed configuration file "{}" with {} entries.'.format(dhcp_conf.name, len(hostlist)))
 	return hostlist
 
 def getInterface(address):
@@ -46,17 +49,25 @@ def getInterface(address):
 					return name
 	return None
 
+magicPort = 9
+magicRAW = False
 def sendMagicPacket(macAddress, iface):
 	macRegex = re.compile(r'(?:([0-9a-f]{2})(?:[:-]|$))', re.IGNORECASE)
 	macBytes = b''.join([int(b,16).to_bytes(1,'little') for b in macRegex.findall(macAddress)])
 	if iface and len(macBytes) == 6:
 		try:
 			logging.info('Sending magic packet to {} (on {})'.format(macAddress, iface))
-			sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0))
+			if magicRAW:
+				sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0))
+				address = (iface, magicPort)
+			else:
+				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				sock.setsockopt(socket.SOL_SOCKET, 25, str(iface + '\0').encode('utf-8'))
+				address = ('<broadcast>', magicPort)
 			sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 			magicPacket = macBytes * 2 + b'\x08\x42' + b'\xff' * 6 + macBytes * 16
 			logging.debug('Magic packet for {} is "{}"'.format(macAddress, magicPacket.hex()))
-			return sock.sendto(magicPacket, (iface, 7)) == len(magicPacket)
+			return sock.sendto(magicPacket, address) == len(magicPacket)
 		except Exception as e:
 			logging.exception('Sending magic packet to {} (on {}) failed'.format(macAddress, iface))
 	return False
@@ -103,9 +114,12 @@ def listen(host, port):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='i4 WakeOnLan Util')
 	parser.add_argument('hostnames', nargs='*', help='hostname(s) to send a magic packet')
-	parser.add_argument('-c', '--dhcp-conf', metavar='dhcp_conf', type=argparse.FileType('r'), help='Path to DHCP configuration with hostnames', nargs='+', required=True)
+	parser.add_argument('-C', '--dhcp-dir', metavar='dhcp_dir', help='Path to DHCP configuration directory', default='/etc/wake-on-lan')
+	parser.add_argument('-c', '--dhcp-conf', metavar='dhcp_conf', type=argparse.FileType('r'), help='Path to additional DHCP configuration files with hostnames', nargs='*')
 	parser.add_argument('-d', '--debug', help="Debug output", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.WARNING)
 	parser.add_argument('-v', '--verbose', help="Verbose output", action="store_const", dest="loglevel", const=logging.INFO)
+	parser.add_argument('-m', '--magic-port', type=int, help="Port for magic packet", dest="magic_port", default=magicPort )
+	parser.add_argument('-r', '--raw', help="Use RAW socket ", action="store_true", dest="magic_raw" )
 
 	parser.add_argument('-l', '--listen', action="store_true", help="Listen for hostnames to wake")
 	parser.add_argument('-a', '--address', help="Adress to listen on", default="0.0.0.0")
@@ -113,19 +127,36 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	logging.basicConfig(level=args.loglevel)
+	magicPort = args.magic_port
+	magicRAW = args.magic_raw
 
 	hosts = {}
-	for conf in args.dhcp_conf:
-		hosts.update(getHosts(conf))
+	files = 0
+
+	if os.path.isdir(args.dhcp_dir):
+		for conffile in os.listdir(args.dhcp_dir):
+			if conffile.endswith('.conf'):
+				with open(conffile, 'r') as conf:
+					hosts.update(getHosts(conf))
+					files = files + 1
+
+	if args.dhcp_conf:
+		for conf in args.dhcp_conf:
+			hosts.update(getHosts(conf))
+			files = files + 1
 
 	if len(hosts) == 0:
 		logging.critical('No hosts configured!')
 		sys.exit(1)
 	else:
-		logging.debug('Found {} host(s) in {} config file(s)'.format(len(hosts), len(args.dhcp_conf)))
+		logging.debug('Found {} host(s) in {} config file(s)'.format(len(hosts), files))
 
 	try:
-		socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0))
+		if magicRAW:
+			socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0))
+		else:
+			socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 	except Exception as e:
 		logging.exception('Creating low level interface socket failed')
 		logging.critical('Insufficient permission to send magic packet!')
