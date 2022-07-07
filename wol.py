@@ -103,7 +103,7 @@ def listen(host, port):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='i4 WakeOnLan Util')
 	parser.add_argument('hostnames', nargs='*', help='hostname(s) to send a magic packet')
-	parser.add_argument('-c', '--dhcp-conf', metavar='dhcp_conf', type=argparse.FileType('r'), help='Path to DHCP configuration with hostnames', default=[open('dhcp.conf')], nargs='*')
+	parser.add_argument('-c', '--dhcp-conf', metavar='dhcp_conf', type=argparse.FileType('r'), help='Path to DHCP configuration with hostnames', nargs='+', required=True)
 	parser.add_argument('-d', '--debug', help="Debug output", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.WARNING)
 	parser.add_argument('-v', '--verbose', help="Verbose output", action="store_const", dest="loglevel", const=logging.INFO)
 
