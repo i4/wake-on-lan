@@ -1,0 +1,12 @@
+Source: i4wold
+Section: misc
+Priority: optional
+Maintainer: Bernhard Heinloth <heinloth@cs.fau.de>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 3.9.8
+Homepage: https://gitlab.cs.fau.de/i4/infra/wake-on-lan
+
+Package: i4wold
+Architecture: any
+Depends: python3, python3-pyparsing, python3-psutil, ${misc:Depends}
+Description: wake-on-lan daemon for i4 networks
