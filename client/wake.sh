@@ -10,8 +10,8 @@ if [[ $# -eq 0 ]] ; then
 	exit 1
 else
 	for HOST in $@ ; do
-		if result=$(echo "${HOST}" | nc -w${WAKETIME} ${WAKEHOST} ${WAKEPORT} 2>/dev/null) ; then
-			printf " - %-20s [%s]\n" "${HOST}" "${result}"
+		if result=$(echo -n ${HOST} | nc -w${WAKETIME} ${WAKEHOST} ${WAKEPORT} 2>/dev/null) ; then
+			printf " - %-20s [%s]\n" ${HOST} "${result}"
 		else
 			echo "Connection to i4 Wake-On-LAN Server at ${WAKEHOST}:${WAKEPORT} failed - abort!"
 			exit 1
