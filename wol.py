@@ -136,7 +136,7 @@ if __name__ == '__main__':
 	if os.path.isdir(args.dhcp_dir):
 		for conffile in os.listdir(args.dhcp_dir):
 			if conffile.endswith('.conf'):
-				with open(conffile, 'r') as conf:
+				with open(os.path.join(args.dhcp_dir, conffile), 'r') as conf:
 					hosts.update(getHosts(conf))
 					files = files + 1
 
