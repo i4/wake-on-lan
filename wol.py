@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pyparsing import *
+from typing import Dict, Optional
 import argparse
 import logging
 import psutil
@@ -9,7 +10,7 @@ import sys
 import os
 import re
 
-def getHosts(dhcp_conf):
+def getHosts(dhcp_conf) -> Dict[str, Dict[str, str]]:
 	# https://github.com/cbalfour/dhcp_config_parser/blob/master/grammar/host.py
 	LBRACE, RBRACE, SEMI = map(Suppress, '{};')
 	PERIOD = Literal('.')
@@ -28,7 +29,7 @@ def getHosts(dhcp_conf):
 	)
 	host_stanza.ignore(comment)
 
-	hostlist = {}
+	hostlist = {}  # type: Dict[str, Dict[str, str]]
 	for result, start, end in host_stanza.scanString(dhcp_conf.read()):
 		hostlist[result['host']] = {
 			'address': result['address'],
@@ -38,7 +39,7 @@ def getHosts(dhcp_conf):
 	logging.debug('Parsed configuration file "{}" with {} entries.'.format(dhcp_conf.name, len(hostlist)))
 	return hostlist
 
-def getInterface(address):
+def getInterface(address: str) -> Optional[str]:
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	sock.connect((address, 0))
 	with sock:
@@ -51,7 +52,7 @@ def getInterface(address):
 
 magicPort = 9
 magicRAW = False
-def sendMagicPacket(macAddress, iface):
+def sendMagicPacket(macAddress: str, iface: str) -> bool:
 	macRegex = re.compile(r'(?:([0-9a-f]{2})(?:[:-]|$))', re.IGNORECASE)
 	macBytes = b''.join([int(b,16).to_bytes(1,'little') for b in macRegex.findall(macAddress)])
 	if iface and len(macBytes) == 6:
@@ -72,7 +73,7 @@ def sendMagicPacket(macAddress, iface):
 			logging.exception('Sending magic packet to {} (on {}) failed'.format(macAddress, iface))
 	return False
 
-def wake(hostname):
+def wake(hostname: str) -> bool:
 	global hosts
 	if hostname in hosts:
 		logging.info('Waking up {}...'.format(hostname))
@@ -87,7 +88,7 @@ def wake(hostname):
 		logging.warning('Unknown host "{}"'.format(hostname))
 		return False
 
-def listen(host, port):
+def listen(host: str, port: int) -> None:
 	try:
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -175,4 +176,3 @@ if __name__ == '__main__':
 		for hostname in args.hostnames:
 			wake(hostname)
 	sys.exit(0)
-
