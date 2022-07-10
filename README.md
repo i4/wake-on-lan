@@ -21,7 +21,7 @@ i4 Wake-On-LAN Client
 Servereinrichtung
 -----------------
 
-Notwendige Python Pakete installieren und dieses Repo auschecken, z.B. unter /opt/wake-on-lan
+Notwendige Python Pakete installieren und dieses Repo auschecken, z.B. unter `/opt/wake-on-lan`:
 
 	apt install python3 python3-pyparsing python3-psutil
 	git clone git@gitlab.cs.fau.de:i4/infra/wake-on-lan.git /opt/wake-on-lan
@@ -37,6 +37,5 @@ Ggf [systemd-Service](wake-on-lan-provider.service) einrichten
 	systemctl enable wake-on-lan-provider.service
 	systemctl start wake-on-lan-provider.service
 
+Standardmäßig werden DHCP Konfigurationsdateien im Ordner `/etc/wake-on-lan/` geladen, entsprechend kann einfach (automatisch) die `/var/lib/cfengine2/distributed/dhcp_server/etc/dhcp/clients.conf` bei Änderungen dort hin kopiert werden.
 
-/var/lib/cfengine2/distributed/dhcp_server/etc/dhcp/
-/var/lib/cfengine2/distributed/i4woke/etc/wake-on-lan/clie
