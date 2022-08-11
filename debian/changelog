@@ -1,3 +1,9 @@
+i4wold (2) unstable; urgency=medium
+
+  * Support multiple sockets and multiple hosts to wake per connection
+
+ -- Bernhard Heinloth <heinloth@cs.fau.de>  Thu, 11 Aug 2022 18:23:02 +0200
+
 i4wold (1) unstable; urgency=medium
 
   * Initial release
