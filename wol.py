@@ -2,6 +2,7 @@
 
 from pyparsing import *
 from typing import Dict, Optional
+import socketserver
 import argparse
 import logging
 import psutil
@@ -88,29 +89,35 @@ def wake(hostname: str) -> bool:
 		logging.warning('Unknown host "{}"'.format(hostname))
 		return False
 
-def listen(host: str, port: int) -> None:
-	try:
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		sock.bind((host, port))
-		sock.listen(1)
-		logging.info('Listening on {}:{}'.format(host, port))
-		while True:
-			connection, client = sock.accept()
-			try:
-				hostname = connection.recv(256)
+class WakeRequestHandler(socketserver.StreamRequestHandler):
+	def handle(self):
+		self.connection.settimeout(6)
+		client = self.client_address[0]
+		logging.debug('Connected {}'.format(client))
+		try:
+			while self.rfile:
+				hostname = self.rfile.readline().decode('ascii').strip()
 				if hostname:
 					logging.info('Request WoL at "{}" from {}'.format(hostname, client))
-					connection.sendall(b'success' if wake(hostname.decode('ascii').strip()) else b'failed')
-			except KeyboardInterrupt:
-				break
-			finally:
-				connection.close()
-	except Exception as e:
-		logging.exception('Listening on {}:{} failed'.format(host, port))
-	finally:
-		sock.close()
+					self.wfile.write(b"success\n" if wake(hostname) else b"failed\n")
+				else:
+					break
+		except socket.timeout:
+			logging.debug('Timeout of {}'.format(client))
 
+def listen(host: str, port: int) -> None:
+	with socketserver.ForkingTCPServer((host, port), WakeRequestHandler, False) as server:
+		server.socket_type = socket.SOCK_STREAM
+		server.allow_reuse_address = True
+		server.server_bind()
+		server.server_activate()
+		logging.info('Listening on {}:{}'.format(host, port))
+		try:
+			server.serve_forever()
+		except KeyboardInterrupt:
+			logging.info('Exit due to keyboard interrupt')
+			server.server_close()
+			sys.exit(0)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='i4 WakeOnLan Util')
