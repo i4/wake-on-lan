@@ -99,7 +99,8 @@ class WakeRequestHandler(socketserver.StreamRequestHandler):
 				hostname = self.rfile.readline().strip()
 				if hostname:
 					logging.info('Request WoL at "{}" from {}'.format(hostname, client))
-					self.wfile.write(b"success\n" if wake(hostname) else b"failed\n")
+					success = wake(hostname)
+					self.wfile.write(b"success\n" if success else b"failed\n")
 				else:
 					break
 		except socket.timeout:
