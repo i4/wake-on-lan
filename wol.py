@@ -96,7 +96,7 @@ class WakeRequestHandler(socketserver.StreamRequestHandler):
 		logging.debug('Connected {}'.format(client))
 		try:
 			while self.rfile:
-				hostname = self.rfile.readline().decode('ascii').strip()
+				hostname = self.rfile.readline().strip()
 				if hostname:
 					logging.info('Request WoL at "{}" from {}'.format(hostname, client))
 					self.wfile.write(b"success\n" if wake(hostname) else b"failed\n")
