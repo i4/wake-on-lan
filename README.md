@@ -39,3 +39,29 @@ Ggf [systemd-Service](wake-on-lan-provider.service) einrichten
 
 Standardmäßig werden DHCP Konfigurationsdateien im Ordner `/etc/wake-on-lan/` geladen, entsprechend kann einfach (automatisch) die `/var/lib/cfengine2/distributed/dhcp_server/etc/dhcp/clients.conf` bei Änderungen dort hin kopiert werden.
 
+
+Konfiguration auf Zielrechner
+-----------------------------
+
+Damit Rechner aufgeweckt werden können, muss Wake-On-LAN im BIOS und auf dem Netzwerkadapter aktiviert werden.
+Letzteres kann z,B, bei einem Interface `eth0` entweder manuell durch
+
+	sudo ethtool -s eth0 wol g
+
+oder mittels einer *udev*-Regel `/etc/udev/rules.d/99-wol.rules` mit dem Inhalt
+
+	ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*", RUN+="/usr/sbin/ethtool -s $name wol g"
+
+geschehen, alternativ ist auch ein *systemd*-Service möglich.
+
+Außerdem soll der Rechner auch bei Inaktivität schlafen gelegt werden, hierzu eignet sich das Werkzeug [autosuspend](https://github.com/languitar/autosuspend/).
+Eine Beispielkonfiguration für den Lehrstuhl befindet sich im gleichnamigen Ordner.
+
+
+Weitere Informationen
+---------------------
+
+Ein Überblick zu diesem Thema ist auf dem [Lehrstuhl-Blog](https://sys.cs.fau.de/2022/10/24/green-it) zu finden.
+Die hier vorliegenden Skripte und Konfigurationen sind auf das Lehrstuhlnetz zugeschnitten, sollen jedoch auch demonstrieren, wie einfach eine Energieeinsparung umgesetzt werden kann.
+
+Es sollte mit geringem Aufwand möglich sein, diesen Ansatz auf eigene Netze zu adaptieren, die in diesem Repo zur Verfügung gestellten Dateien dürfen dazu gerne verwendet und angepasst werden.
