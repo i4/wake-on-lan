@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+TIMESTAMP="${1}"
+
+readonly WAKEALARM="/sys/class/rtc/rtc0/wakealarm"
+
+# One has to write '0' to the pseudo file before setting a new alarm
+# time.
+echo 0 > "${WAKEALARM}"
+echo "${TIMESTAMP}" > "${WAKEALARM}"

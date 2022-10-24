@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly INHIBIT_AUTOSUSPEND_FLAG_FILE="/var/tmp/inhibit-autosuspend"
+
+if [[ ! -f "${INHIBIT_AUTOSUSPEND_FLAG_FILE}" ]]; then
+	exit 1
+fi
+
+FLAG_FILE_LAST_MODIFICATION=$(stat -c "%Y" "${INHIBIT_AUTOSUSPEND_FLAG_FILE}")
+NOW=$(date +"%S")
+
+FLAG_FILE_AGE_SECONDS=$(( ${NOW} - ${FLAG_FILE_LAST_MODIFICATION} ))
+
+if [[ ${FLAG_FILE_AGE_SECONDS} -gt 4320 ]]; then
+	echo "${INHIBIT_AUTOSUSPEND_FLAG_FILE} was last touched three days ago. Going to remove and ignore the file"
+	rm "${INHIBIT_AUTOSUSPEND_FLAG_FILE}"
+	exit 1
+fi
+
+echo "${INHIBIT_AUTOSUSPEND_FLAG_FILE} found, signalling that the system is active"
+exit 0

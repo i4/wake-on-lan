@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+export LANG=C
+export LC_TIME=C
+
+NEXT_FAI_RUN_AT=$(systemctl show run-fai.timer --property=NextElapseUSecRealtime --value | cut -d' ' -f 2-)
+
+date -d "${NEXT_FAI_RUN_AT}" +%s

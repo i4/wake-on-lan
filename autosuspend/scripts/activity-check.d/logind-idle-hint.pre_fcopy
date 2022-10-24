@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Although autosuspend's LogindSessionsIdle should check the IdleHint,
+# this appears to be, at least sometimes, not reliable. I suspect it
+# may because autosuspend uses
+#     if not properties["IdleHint"]:
+#        return "Login session {} is not idle".format(session_id)
+# https://github.com/languitar/autosuspend/blob/c7f06a27db37f2a4ed04b596427da52fd1192935/src/autosuspend/checks/systemd.py#L112-L113
+# which does not check if the value of IdleHint is 'true' or
+# 'false'. Until autosuspend's LogindSessionsIdle check is reliable,
+# we use the little script below to see if there is a session with
+# IdleHint=no.
+# See https://github.com/languitar/autosuspend/pull/225
+
+for SESSION_ID in $(loginctl list-sessions --no-legend | awk '{ print $1 }'); do
+    IDLE_HINT=$(loginctl show-session $SESSION_ID -p IdleHint)
+    IDLE_HINT="${IDLE_HINT#IdleHint=}"
+
+    if [[ "${IDLE_HINT}" == no ]]; then
+        echo "Session $SESSION_ID is not idle"
+        exit 0
+    fi
+done
+
+exit 1

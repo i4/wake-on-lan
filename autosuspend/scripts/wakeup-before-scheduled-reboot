@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+# Although this file is called wakeup-before-scheduled-reboot we
+# actually check for the next scheduled reboot *or* shutdown. But this
+# does not really matter, as we want to wakeup in both cases and we
+# only schedule reboots.
+SCHEDULED_SHUTDOWN_INFO=$(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager ScheduledShutdown)
+
+declare -i SCHEDULED_SHUTDOWN_SECS
+SCHEDULED_SHUTDOWN_SECS=$(echo "${SCHEDULED_SHUTDOWN_INFO}" | cut -d ' ' -f 3)
+
+if [[ ${SCHEDULED_SHUTDOWN_SECS} -eq 0 ]]; then
+	# Output nothing to make autosuspend happy.
+	echo ""
+	exit
+fi
+
+BEFORE_SCHEDULED_SHUTDOWN_SECS=$(( SCHEDULED_SHUTDOWN_SECS - 180 ))
+
+echo "${BEFORE_SCHEDULED_SHUTDOWN_SECS}"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+export LANG=C
+export LC_TIME=C
+
+NEXT_FAI_RUN_AT=$(systemctl show run-fai.timer --property=NextElapseUSecRealtime --value | cut -d' ' -f 2-)
+
+declare -i NEXT_FAI_RUN_AT_EPOCH_SECS
+NEXT_FAI_RUN_AT_EPOCH_SECS=$(date -d "${NEXT_FAI_RUN_AT}" +%s)
+
+declare -i ADD_DAYS=3
+declare -i EXTRA_SECS=$(( ADD_DAYS * 24 * 60 * 60 ))
+
+declare -i WAKEUP_EPOCH_SECS=$(( NEXT_FAI_RUN_AT_EPOCH_SECS + EXTRA_SECS ))
+
+echo "${WAKEUP_EPOCH_SECS}"

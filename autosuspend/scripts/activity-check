@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+ACTIVITY_CHECK_DIR=/etc/autosuspend/activity-check.d
+
+if [[ ! -d "${ACTIVITY_CHECK_DIR}" ]]; then
+	# autosuspend assumes that the system is active if the exit status
+	# is zero, or inactive otherwise. If there is no
+	# ACTIVITY_CHECK_DIR, then the system is assumed to be inactive,
+	# hence we return 1 here.
+	exit 1
+fi
+
+shopt -s nullglob
+for FILE in "${ACTIVITY_CHECK_DIR}"/*; do
+	if [[ ! -x "${FILE}" ]]; then
+		continue
+	fi
+
+	if [[ "${FILE}" == *.pre_fcopy ]]; then
+		continue
+	fi
+
+	if "${FILE}"; then
+		# Executing FILE returned a zero exit status, that means the
+		# system is active and we do not need to check more scripts.
+		exit
+	fi
+done
+
+# No script signalled that the system is active. Return a non-zero
+# value to signal that it is inactive.
+exit 1
